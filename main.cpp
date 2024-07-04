@@ -140,7 +140,7 @@ void adminALG () {
 	    cout << "    9.查询两城市间，中转最少的路径" << endl;
         cout << "    10.查询两城市间，花费最少的路径" << endl;
         cout << "    11.查询两城市间，耗时最少的路径" << endl;
-        
+        cout << "    12.查询两城市之间所有路径" << endl;
         cout << "请输入数字(输入0退出操作界面)：";
         cin >> func;
         cout << endl;
@@ -231,6 +231,14 @@ void adminALG () {
                 cin >> ec;
                 graph.printLeastTimePath(sc, ec);
 		        break;
+            case 12:
+                cout << "    12.查询两城市之间所有路径！" << endl;
+                cout << "输入要查询的起点城市：";
+                cin >> sc;
+                cout << "输入要查询的终点城市：";
+                cin >> ec;
+                graph.printPathsByCity(sc, ec);
+                break;
             default:
                 cout << "输入不正确，请重新输入" << endl;
                 break;
@@ -251,6 +259,7 @@ void user() {
         cout << "    3.显示所有城市" << endl;
         cout << "    4.显示所有线路" << endl;
         cout << "    5.查询两城市间，中转次数最少的路径" << endl;
+        cout << "    6.查询两城市之间所有路径" << endl;
         cout << "请输入数字(按0返回选择身份选择界面):";
         cin >> func;
         if (!func) {
@@ -294,6 +303,14 @@ void user() {
                 cout << "输入要查询的终点城市：";
                 cin >> ec;
                 graph.printLeastTransferPath(sc, ec);
+                break;
+            case 6:
+                cout << "6.查询两城市之间所有路径！" << endl;
+                cout << "输入要查询的起点城市：";
+                cin >> sc;
+                cout << "输入要查询的终点城市：";
+                cin >> ec;
+                graph.printPathsByCity(sc, ec);
                 break;
             default:
                 cout << "输入不正确，请重新输入！" << endl;

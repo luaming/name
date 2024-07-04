@@ -40,9 +40,10 @@ struct Time {
 struct LineNode {  // 线路信息，作为边表的元素
     
     LineNode (const string scn, const string ecn, const Time st, const Time et, const Time spend_t, 
-            const float spend_m, const string amt) 
+            const float spend_m, const string amt,int k) 
             : start_city_name(scn), end_city_name(ecn), 
-            start_time(st), end_time(et), spend_time(spend_t), spend_money(spend_m), amount(amt) {}
+            start_time(st), end_time(et), spend_time(spend_t),
+             spend_money(spend_m), amount(amt),kind(k) {}
 
     string start_city_name;
     string end_city_name;
@@ -50,6 +51,7 @@ struct LineNode {  // 线路信息，作为边表的元素
     Time spend_time;
     float spend_money;
     string amount;  // 火车或飞机的班次
+    int kind;
 };
 
 struct Vnode {  // 顶点表中的头结点，存储始发站的信息
@@ -76,6 +78,13 @@ struct cmp_vnode {  // 定义从 Vnode 映射 vector<InfoType> 的 map 的关键
 
 class ALGraph {
     public:
+        ALGraph() {                  //构造函数
+          line_num = 0;
+          city_num = 0;
+          mkind = 1;                  //选择哪种票，1-飞机，2-火车，3-汽车，初始为飞机票
+          together = false;           //是否可换乘，初始为否，ui设计时可根据ui按钮的初始
+        }
+        void changeType(); //更改单一或混合方式选择                    
         bool ifCityExist (const std:: string &city_name);  // 查询城市是否存在
         int searchCityNum (const string &city_name);  // 查询城市编号
         void addCity (const string &city_name);  // 手动添加城市
@@ -113,6 +122,8 @@ class ALGraph {
 
         int city_num;
         int line_num;
+        int mkind;
+        bool together;
 
         // 通过起点城市、终点城市、班次，查询一条线路信息
         vector<LineNode> getLineNode (const string sc, const string ec, const string amt);
