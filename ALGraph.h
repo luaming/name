@@ -6,10 +6,7 @@
 #include<string>
 #include<assert.h>
 #define MAXFILESIZE 50
-
-using std::string;
-using std::vector;
-using std::map;
+using namespace std;
 
 struct Time {
     //时间格式: hour:minute,+day
@@ -101,6 +98,10 @@ class ALGraph {
         void showAllCity();  // 输出所有城市
         void showAllLine();  // 输出所有线路
 
+        //输出特定要求下的直达路径
+        //四种决策方式都在这一个函数里，未来可以做是否换乘那个复选框的槽函数
+        void printstraightPath(const std::string sc, const std::string ec);
+        
         // 返回从起点城市到终点城市的所有路径
         std::vector<std::vector<LineNode>> getPathsByCity (const string &sc, const string &ec);
 
