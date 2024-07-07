@@ -58,6 +58,6 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     MainWindow w;
     w.show();
-    test_get_price("2024-07-08","西安北","北京西");
+    test_get_price("2024-07-08","西安北","武汉");
     return a.exec();
 }

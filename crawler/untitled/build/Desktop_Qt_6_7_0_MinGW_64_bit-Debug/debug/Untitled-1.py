@@ -80,11 +80,11 @@ def get_price(date, from_station, to_station):
             traindata["wz_price"], # 无座
         ])
         acc.append(
-            f"{traindata['from_station_name']}|{traindata['to_station_name']}|{traindata['station_train_code']}|"
-            f"{traindata['start_time']}|{traindata['arrive_time']}|{traindata['lishi']}|"
-            f"{traindata['swz_price'] or '--'}|{traindata['zy_price'] or '--'}|{traindata['ze_price'] or '--'}|"
-            f"{traindata['gr_price'] or '--'}|{traindata['rw_price'] or '--'}|{traindata['yw_price'] or '--'}|"
-            f"{traindata['rz_price'] or '--'}|{traindata['yz_price'] or '--'}|{traindata['wz_price'] or '--'}"
+            f"{traindata['from_station_name']} {traindata['to_station_name']} {traindata['station_train_code']} "
+            f"{traindata['start_time']} {traindata['arrive_time']} {traindata['lishi']} "
+            f"{traindata['swz_price'] or '--'} {traindata['zy_price'] or '--'} {traindata['ze_price'] or '--'} "
+            f"{traindata['gr_price'] or '--'} {traindata['rw_price'] or '--'} {traindata['yw_price'] or '--'} "
+            f"{traindata['rz_price'] or '--'} {traindata['yz_price'] or '--'} {traindata['wz_price'] or '--'}"
         )
 
 
