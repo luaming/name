@@ -12,6 +12,34 @@
 #include<algorithm>
 #define INF 0xfffff
 using namespace std;
+void callPyCrawler(const std::string& date, const std::string& from_station, const std::string& to_station) {
+    std::string command = "crawler.exe " + date + " " + from_station + " " + to_station;
+    FILE* pipe = _popen(command.c_str(), "r");
+    _pclose(pipe);
+}
+void DayTime::changetoday() {              //确定当天日期
+    cout << "请输入年 月 日";
+    cin >> year >> month >> day;
+}   
+void DayTime::theday(int yy, int mm, int dd, int addday) {   //计算某一天经过n天后的日期并输出
+    int monthday[] = { 0,31,28,31,30,31,30,31,31,30,31,30,31 };
+    if (yy % 4 == 0 && yy % 100 != 0 || yy % 400 == 0) {
+        monthday[2]++;
+    }
+    dd = dd + addday / 1440;
+    if (dd > monthday[mm]) {
+        dd -= monthday[mm];
+        mm++;
+        if (mm > 12) {
+            yy++;
+            mm -= 12;
+        }
+    }
+    int aminute = addday % 60;
+    int ahour = (addday % 1440) / 60;
+    cout << "到达时间" << mm << "月 " <<
+        dd << "日 " << ahour << ':' << aminute << endl;
+}  
 
 const Time getTimeByMinute(int minute) {
     int day = minute / 1440;
@@ -50,16 +78,16 @@ Time operator - (Time t1, Time t2) {
 
 //'>>' 重载，实现"hour:minute,+day" 的存储
 istream& operator >> (istream& in, Time& time) {
-    char c1, c2, c3;
-    int hour, minute, day;
-    in >> hour >> c1 >> minute >> c2 >> c3 >> day;
-    time.day = day;
+    int minute, hour;
+    char c;
+    in >> hour >> c >> minute;
+    time.day = 0;
     time.minute = minute;
     time.hour = hour;
     return in;
 }
 
-//运算符'<<'重载以美化 Time 对象的输入
+//运算符'<<'重载以美化 Time 对象的输出
 ostream& operator << (ostream& out, const Time& time) {
     //数据之间空白用'0'填充
     cout.fill('0');
@@ -74,11 +102,11 @@ ostream& operator << (ostream& out, const Time& time) {
     return out;
 }
 
-//运算符'<<'重载以美化 LineNode 对象的输入
+//运算符'<<'重载以美化 LineNode 对象的输出
 ostream& operator << (ostream& out, const LineNode& line) {
 
     cout << "出发城市|到达城市|班次名|出发时间|到达时间|路程用时|路程票价" << endl;
-    cout << setw(10) << line.start_city_name << " " << setw(10) << line.end_city_name
+    cout << setw(2) << line.show_start << " " << setw(3) << line.show_end
         << " " << setw(6) << line.amount << " ";
     cout.fill('0'); // 修改 fill() 的默认填充符为 0
     cout << line.start_time << " " << line.end_time << " " << line.spend_time << " "
@@ -138,11 +166,18 @@ void ALGraph::addCity(const string& city_name) {
     }
     m.insert({ Vnode(city_name, city_num), vector<LineNode>() });
     ++city_num;
+
+    //auto it = m.cbegin();
+    //while(it!=m.cend()) {                  //利用爬虫更新新添城市与其他城市之间的路径
+    //    addfrompachong(it->first.start_city_name, city_name);
+    //    addfrompachong(city_name, it->first.start_city_name);
+    //    it++;
+    //}
+    
 }
 
 // 从文件中读取以添加城市
 void ALGraph::addCityFromFile(const char FILENAME[MAXFILESIZE]) {
-
     cout << "开始从" << FILENAME << "中读入并添加城市！" << endl;
     ifstream file(FILENAME);  // 打开失败返回NULL
     if (!file) {
@@ -188,9 +223,9 @@ void ALGraph::addLine() {
     }
     cout << "请输入班次名：";
     cin >> amount;
-    cout << "请输入出发时间(格式为hh:mm,+d):";
+    cout << "请输入出发时间(格式为hh:mm):";
     cin >> start_time;
-    cout << "请输入到达时间(格式为hh:mm,+d):";
+    cout << "请输入到达时间(格式为hh:mm):";
     cin >> end_time;
 
     if (start_time < end_time) {
@@ -208,15 +243,83 @@ void ALGraph::addLine() {
     auto it = m.find(Vnode(start_city_name));
     if (it != m.end()) {
         (*it).second.push_back(LineNode(start_city_name, end_city_name, start_time, end_time,
-            spend_time, spend_money, amount, kind));
+            spend_time, spend_money, amount, kind,start_city_name,end_city_name));
         cout << "添加路线成功！" << endl;
     }
 
     ++line_num;
 
 }//addLine 
+void ALGraph::getarrivaltime(vector<LineNode>& path) {                      //得到到达时刻
+    int time_sum = path.at(0).start_time.getTotalMintue();
+    for (size_t i = 0; i < path.size(); ++i) {
+        if (i == 0) {  // 某路径的第一条线路，不用考虑隔天等待的问题
+            time_sum += path.at(i).spend_time.getTotalMintue();
+        }
+        else {  // 需要考虑中转时，隔天等待的问题
+            if (path.at(i - 1).end_time < path.at(i).start_time) {  // 可以当天中转下一班次，不用等待
 
-//从文件中读取以添加线路
+                time_sum += path.at(i).spend_time.getTotalMintue();
+            }
+            else {  // 不能当天中转下一班次，需要隔一天
+
+                Time next_station_start_time = path.at(i).start_time;
+                next_station_start_time.day += 1;
+                time_sum = time_sum + (next_station_start_time - path.at(i - 1).end_time).getTotalMintue()
+                    + path.at(i).spend_time.getTotalMintue();
+            }
+        }
+    }
+    today.theday(today.year, today.month, today.day, time_sum);
+}
+//依靠爬虫实现对路径两个城市之间路径的读取
+void ALGraph::addfrompachong(string sc,string ec) {
+    if ((!ifCityExist(sc)) || (!ifCityExist(ec)) || sc == ec) {
+        return;
+    }
+    stringstream ss;
+    ss << today.year << '-' << today.month << '-' << today.day;
+    string todaystr;
+    ss >> todaystr;
+    callPyCrawler(todaystr, sc, ec);
+    ifstream ifs("train_schedule.txt");
+    int kind=2;         //默认爬虫只爬火车
+    string line;
+    string pass;         //用于过渡不需要的票
+    string num1, num2;
+    int temp_line_num = line_num;
+    while (getline(ifs, line)) {
+        istringstream istr(line);
+        string start_city_name;
+        string end_city_name;
+        Time start_time, end_time;
+        Time spend_time;
+        float spend_money;
+        string amount;  // 火车或飞机的班次
+        
+        istr >> start_city_name >> end_city_name >> amount
+            >> start_time >> end_time >> spend_time >>
+            pass>>pass>>num1>>pass>>pass>>pass>>pass>>num2>>pass;
+        if (num1 == "--") {
+            istringstream iss(num2);
+            iss >> spend_money;
+        }
+        else {
+            istringstream iss(num1);
+            iss >> spend_money;
+        }
+        spend_money /= 10;
+        auto it = m.find(Vnode(sc));
+        if (it != m.end()) {
+            (*it).second.push_back(LineNode(sc,ec,start_time, end_time, spend_time,
+                spend_money, amount, kind,start_city_name, end_city_name));
+            ++line_num;
+        }
+    }
+    ifs.close(); //打开存储线路的文件完毕，关闭file
+    cout << "导入了 " << line_num - temp_line_num << " 条路线信息！" << endl;
+}
+//从文件中读取以添加线路 
 void ALGraph::addLineFromFile(const char FILENAME[MAXFILESIZE]) {
     cout << "从" << FILENAME << "中读取并导入线路！" << endl;
     ifstream file(FILENAME);
@@ -229,6 +332,9 @@ void ALGraph::addLineFromFile(const char FILENAME[MAXFILESIZE]) {
 
     //从第二行开始读取真正需要存储的信息
     string line;
+    string pass;         //用于过渡不需要的票
+    string num1, num2;
+    
     int temp_line_num = line_num;
     while (getline(file, line)) {
         istringstream istr(line);
@@ -238,14 +344,23 @@ void ALGraph::addLineFromFile(const char FILENAME[MAXFILESIZE]) {
         Time spend_time;
         float spend_money;
         string amount;  // 火车或飞机的班次
-        int kind;
+        int kind;       //飞机还是火车
         istr >> start_city_name >> end_city_name >> amount
-            >> start_time >> end_time >> spend_time >> spend_money >> kind;
-
+            >> start_time >> end_time >> spend_time >>kind>> pass
+            >> pass >> num1 >> pass >> pass >> pass >> pass >> num2 >> pass;
+        if (num1 == "--") {
+            istringstream iss(num2);
+            iss >> spend_money;
+        }
+        else {
+            istringstream iss(num1);
+            iss >> spend_money;
+        }
+        spend_money /= 10;
         auto it = m.find(Vnode(start_city_name));
         if (it != m.end()) {
             (*it).second.push_back(LineNode(start_city_name, end_city_name, start_time, end_time, spend_time,
-                spend_money, amount, kind));
+                spend_money, amount, kind, start_city_name, end_city_name));
             ++line_num;
         }
     }
@@ -428,7 +543,7 @@ void ALGraph::printstraightPath(const std::string sc, const std::string ec) {
         return;
     }
     int select = 0;
-    cout << "请选择决策方式:1,无--2,最少时间--3,最小花费" << endl;
+    cout << "请选择决策方式：1，无--2，最少时间--3，最小花费" << endl;
     cin >> select;
     switch (select) {
     case 1: {
@@ -471,6 +586,14 @@ void ALGraph::changeType() {
         together = false;
         cin >> mkind;
     }
+}
+bool zhongzhuanOK(Time before, Time now, int kind) {       //判断是否满足中转必要时间
+    if (now < before) {                                    //飞机两小时，火车一小时,汽车40分钟
+        now.day++;
+    }
+    int need = 120/kind;
+    int pos = (now - before).getTotalMintue();
+    return pos >= need;
 }
 // 输出从起点城市到终点城市的线路
 std::vector<std::vector<LineNode>> ALGraph::getPathsByCity(const std::string& sc, const std::string& ec) {
@@ -535,7 +658,8 @@ std::vector<std::vector<LineNode>> ALGraph::getPathsByCity(const std::string& sc
 
                     if ((visited_1.find(n.amount) == visited_1.end()) &&
                         (visited_2.find(n.end_city_name) == visited_2.end())
-                        && (n.kind == mkind || together)) {
+                        && (n.kind == mkind || together)
+                        &&zhongzhuanOK(lnode.end_time,n.start_time,mkind)) {
 
                         path.push_back(n);
                         visited_1.insert(n.amount);
@@ -782,8 +906,13 @@ void ALGraph::printLeastMoneyPath(const std::string& sc, const std::string& ec) 
         // 执行松弛操作，更新该结点所有邻接结点的最小估计距离
         const auto& vec = m.at(min_dist_iter->first);
         for (auto lnode : vec) {
-
-            if (visited.find(lnode.end_city_name) == visited.cend() && (together || lnode.kind == mkind)) {
+            auto iter_pre = parent.find(make_pair(min_dist_iter->first, ""));
+            std::vector<LineNode>pre;
+            if (!parent.empty()) {
+                pre = getLineNode(iter_pre->second, iter_pre->first.first, iter_pre->first.second);
+            }
+            if (visited.find(lnode.end_city_name) == visited.cend() && (together || lnode.kind == mkind)
+                &&(parent.empty() || zhongzhuanOK(pre[0].end_time, lnode.start_time, mkind))) {
                 if ((min_dist_iter->second + lnode.spend_money) < distanced.at(lnode.end_city_name)) {
 
                     distanced[lnode.end_city_name] = min_dist_iter->second + lnode.spend_money;
@@ -809,7 +938,7 @@ void ALGraph::printLeastMoneyPath(const std::string& sc, const std::string& ec) 
 
     if (iter_parent == parent.cend()) {
 
-        cout << "系统中没有路径可以从" << sc << "到达" << ec << "!" << endl;
+        cout << "系统中没有路径可以从" << sc << "到达" << ec << "！" << endl;
     }
     else {
         // 提取 parent 中存储的路径，存入最终的结果 result
