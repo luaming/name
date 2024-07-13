@@ -593,7 +593,7 @@ bool zhongzhuanOK(Time before, Time now, int kind) {       //判断是否满足�
     }
     int need = 120/kind;
     int pos = (now - before).getTotalMintue();
-    return pos >= need;
+    return pos >= need&&pos<=720;
 }
 // 输出从起点城市到终点城市的线路
 std::vector<std::vector<LineNode>> ALGraph::getPathsByCity(const std::string& sc, const std::string& ec) {
@@ -679,6 +679,10 @@ std::vector<std::vector<LineNode>> ALGraph::getPathsByCity(const std::string& sc
 
                 // 当前指向的节点没有邻边，或所有结点都已经被访问
                 if (i == possible_way.size()) {
+                    for (size_t j = 0; j < possible_way.size(); j++) {
+                        visited_1.erase(possible_way[j].amount);
+                    }
+                    visited_2.erase(possible_way[0].start_city_name);
                     path.pop_back();
                 }
             }
@@ -692,7 +696,7 @@ std::vector<std::vector<LineNode>> ALGraph::getPathsByCity(const std::string& sc
 // 打印从起点城市到终点城市的所有路径
 void ALGraph::printPathsByCity(const std::string& sc, const std::string& ec) {
     changeType();
-    auto path_vec = getPathsByCity(sc, ec);
+    std::vector<vector<LineNode>> path_vec = getPathsByCity(sc, ec);
 
     if (path_vec.size() == 0) {
         cout << "从" << sc << "到" << ec << "并没有路径！" << endl;
@@ -704,9 +708,9 @@ void ALGraph::printPathsByCity(const std::string& sc, const std::string& ec) {
 
         ++i;
         cout << "从" << sc << "到" << ec << "的第" << i << "条路径如下：" << endl;
-        for (auto line : path) {
-
-            cout << line;
+        size_t j;
+        for (j = 0; j < path.size(); j++) {
+            cout << path[j];
         }
     }
 }  // printPathsByCity
@@ -886,7 +890,7 @@ void ALGraph::printLeastMoneyPath(const std::string& sc, const std::string& ec) 
         while (dist_iter != distanced.cend()) {
 
             if ((visited.find(dist_iter->first) == visited.cend())
-                && ((dist_iter->second) <= min_dist_value)) {
+                && ((dist_iter->second) < min_dist_value)) {
 
                 min_dist_value = dist_iter->second;
                 min_dist_iter = dist_iter;
@@ -900,30 +904,32 @@ void ALGraph::printLeastMoneyPath(const std::string& sc, const std::string& ec) 
 
         visited.insert(min_dist_iter->first);
         //cout << min_dist_iter->first << "  " << min_dist_iter->second << endl;
-        visited.insert(min_dist_iter->first);
 
         // 刚刚被访问的最小距离的结点为 m.at(min_dister->first)
         // 执行松弛操作，更新该结点所有邻接结点的最小估计距离
         const auto& vec = m.at(min_dist_iter->first);
-        for (auto lnode : vec) {
-            auto iter_pre = parent.find(make_pair(min_dist_iter->first, ""));
-            std::vector<LineNode>pre;
-            if (!parent.empty()) {
-                pre = getLineNode(iter_pre->second, iter_pre->first.first, iter_pre->first.second);
-            }
+        auto iter_pre = parent.find(make_pair(min_dist_iter->first, ""));
+        std::vector<LineNode>pre;
+        if (iter_pre != parent.cend()) {
+            pre = getLineNode(iter_pre->second, iter_pre->first.first, iter_pre->first.second);
+        }
+        for (size_t j = 0; j < vec.size();j++) {
+            LineNode lnode = vec[j];
+            
             if (visited.find(lnode.end_city_name) == visited.cend() && (together || lnode.kind == mkind)
-                &&(parent.empty() || zhongzhuanOK(pre[0].end_time, lnode.start_time, mkind))) {
+                &&(iter_pre==parent.cend() || zhongzhuanOK(pre[0].end_time, lnode.start_time, mkind))) {
                 if ((min_dist_iter->second + lnode.spend_money) < distanced.at(lnode.end_city_name)) {
 
                     distanced[lnode.end_city_name] = min_dist_iter->second + lnode.spend_money;
-                    auto __it_parent = parent.find(make_pair(lnode.end_city_name, lnode.amount));
-                    if (__it_parent == parent.end()) {
-                        parent[make_pair(lnode.end_city_name, lnode.amount)] = lnode.start_city_name;
+                    auto __it_parent = parent.find(make_pair(lnode.end_city_name,""));
+
+                    if (__it_parent == parent.cend()) {
+                        parent.insert({ make_pair(lnode.end_city_name, lnode.amount), lnode.start_city_name });
                     }
                     else {
                         // 如果键已存在，则删除旧键，因为旧键中的 amount 是旧信息，而且没法被直接覆盖
                         parent.erase(__it_parent);
-                        parent[make_pair(lnode.end_city_name, lnode.amount)] = lnode.start_city_name;
+                        parent.insert({ make_pair(lnode.end_city_name, lnode.amount), lnode.start_city_name });
                     }
                 }
             }
